@@ -19,7 +19,7 @@ class Bot extends EventEmitter {
     this.debug = opts.debug || false
   }
 
-  getProfile (id, cb) {
+  getProfile (id) {
     return request({
       method: 'GET',
       uri: `https://graph.facebook.com/v2.11/${id}`,
@@ -28,16 +28,14 @@ class Bot extends EventEmitter {
     })
     .then(body => {
       if (body.error) return Promise.reject(body.error)
-      if (!cb) return body
-      cb(null, body)
+      return Promise.resolve(body)
     })
     .catch(err => {
-      if (!cb) return Promise.reject(err)
-      cb(err)
+      return Promise.reject(err)
     })
   }
 
-  sendMessage (recipient, payload, cb) {
+  sendMessage (recipient, payload) {
     return request({
       method: 'POST',
       uri: 'https://graph.facebook.com/v2.11/me/messages',
@@ -49,16 +47,14 @@ class Bot extends EventEmitter {
     })
     .then(body => {
       if (body.error) return Promise.reject(body.error)
-      if (!cb) return body
-      cb(null, body)
+      return Promise.resolve(body)
     })
     .catch(err => {
-      if (!cb) return Promise.reject(err)
-      cb(err)
+      return Promise.reject(err)
     })
   }
 
-  sendSenderAction (recipient, senderAction, cb) {
+  sendSenderAction (recipient, senderAction) {
     return request({
       method: 'POST',
       uri: 'https://graph.facebook.com/v2.11/me/messages',
@@ -72,16 +68,14 @@ class Bot extends EventEmitter {
     })
     .then(body => {
       if (body.error) return Promise.reject(body.error)
-      if (!cb) return body
-      cb(null, body)
+      return Promise.resolve(body)
     })
     .catch(err => {
-      if (!cb) return Promise.reject(err)
-      cb(err)
+      return Promise.reject(err)
     })
   }
 
-  setField (field, payload, cb) {
+  setField (field, payload) {
     return request({
       method: 'POST',
       uri: 'https://graph.facebook.com/v2.11/me/messenger_profile',
@@ -92,16 +86,14 @@ class Bot extends EventEmitter {
     })
     .then(body => {
       if (body.error) return Promise.reject(body.error)
-      if (!cb) return body
-      cb(null, body)
+      return Promise.resolve(body)
     })
     .catch(err => {
-      if (!cb) return Promise.reject(err)
-      cb(err)
+      return Promise.reject(err)
     })
   }
 
-  deleteField (field, cb) {
+  deleteField (field) {
     return request({
       method: 'DELETE',
       uri: 'https://graph.facebook.com/v2.11/me/messenger_profile',
@@ -112,45 +104,43 @@ class Bot extends EventEmitter {
     })
     .then(body => {
       if (body.error) return Promise.reject(body.error)
-      if (!cb) return body
-      cb(null, body)
+      return Promise.resolve(body)
     })
     .catch(err => {
-      if (!cb) return Promise.reject(err)
-      cb(err)
+      return Promise.reject(err)
     })
   }
 
-  setGetStartedButton (payload, cb) {
-    return this.setField('get_started', payload, cb)
+  setGetStartedButton (payload) {
+    return this.setField('get_started', payload)
   }
 
-  setPersistentMenu (payload, cb) {
-    return this.setField('persistent_menu', payload, cb)
+  setPersistentMenu (payload) {
+    return this.setField('persistent_menu', payload)
   }
 
-  setDomainWhitelist (payload, cb) {
-    return this.setField('whitelisted_domains', payload, cb)
+  setDomainWhitelist (payload) {
+    return this.setField('whitelisted_domains', payload)
   }
 
-  setGreeting (payload, cb) {
-    return this.setField('greeting', payload, cb)
+  setGreeting (payload) {
+    return this.setField('greeting', payload)
   }
 
-  removeGetStartedButton (cb) {
-    return this.deleteField('get_started', cb)
+  removeGetStartedButton () {
+    return this.deleteField('get_started')
   }
 
-  removePersistentMenu (cb) {
-    return this.deleteField('persistent_menu', cb)
+  removePersistentMenu () {
+    return this.deleteField('persistent_menu')
   }
 
-  removeDomainWhitelist (cb) {
-    return this.deleteField('whitelisted_domains', cb)
+  removeDomainWhitelist () {
+    return this.deleteField('whitelisted_domains')
   }
 
-  removeGreeting (cb) {
-    return this.deleteField('greeting', cb)
+  removeGreeting () {
+    return this.deleteField('greeting')
   }
 
   middleware () {
@@ -205,61 +195,61 @@ class Bot extends EventEmitter {
   _handleMessage (json) {
     let entries = json.entry
 
-    entries.forEach((entry) => {
+    return Promise.all(entries.map((entry) => {
       let events = entry.messaging
 
-      events.forEach((event) => {
+      return Promise.all(events.map((event) => {
         // handle inbound messages and echos
         if (event.message) {
           if (event.message.is_echo) {
-            this._handleEvent('echo', event)
+            return this._handleEvent('echo', event)
           } else {
-            this._handleEvent('message', event)
+            return this._handleEvent('message', event)
           }
         }
 
         // handle postbacks
         if (event.postback) {
-          this._handleEvent('postback', event)
+          return this._handleEvent('postback', event)
         }
 
         // handle message delivered
         if (event.delivery) {
-          this._handleEvent('delivery', event)
+          return this._handleEvent('delivery', event)
         }
 
         // handle message read
         if (event.read) {
-          this._handleEvent('read', event)
+          return this._handleEvent('read', event)
         }
 
         // handle authentication
         if (event.optin) {
-          this._handleEvent('authentication', event)
+          return this._handleEvent('authentication', event)
         }
 
         // handle referrals (e.g. m.me links)
         if (event.referral) {
-          this._handleEvent('referral', event)
+          return this._handleEvent('referral', event)
         }
 
         // handle account_linking
         if (event.account_linking && event.account_linking.status) {
           if (event.account_linking.status === 'linked') {
-            this._handleEvent('accountLinked', event)
+            return this._handleEvent('accountLinked', event)
           } else if (event.account_linking.status === 'unlinked') {
-            this._handleEvent('accountUnlinked', event)
+            return this._handleEvent('accountUnlinked', event)
           }
         }
-      })
-    })
+      }))
+    }))
   }
 
   _getActionsObject (event) {
     return {
-      setTyping: (typingState, cb) => {
+      setTyping: (typingState) => {
         let senderTypingAction = typingState ? 'typing_on' : 'typing_off'
-        this.sendSenderAction(event.sender.id, senderTypingAction, cb)
+        this.sendSenderAction(event.sender.id, senderTypingAction)
       },
       markRead: this.sendSenderAction.bind(this, event.sender.id, 'mark_seen')
     }
@@ -276,7 +266,10 @@ class Bot extends EventEmitter {
   }
 
   _handleEvent (type, event) {
-    this.emit(type, event, this.sendMessage.bind(this, event.sender.id), this._getActionsObject(event))
+    const _self = this
+    return new Promise(function(res, rej){
+        _self.emit(type, event, _self.sendMessage.bind(_self, event.sender.id), _self._getActionsObject(event), res, rej)
+    })
   }
 }
 
